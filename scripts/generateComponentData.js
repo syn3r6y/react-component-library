@@ -1,21 +1,22 @@
-import fs from 'fs';
-import path from 'path';
-import chalk from 'chalk';
-import parse from 'parse';
-import chokidar from 'chokidar';
+const fs = require('fs');
+const path = require('path');
+const chalk = require('chalk');
+const parse = require('react-docgen').parse;
+const chokidar = require('chokidar');
 
 const paths = {
   examples: path.join(__dirname, '../src', 'docs', 'examples'),
-  components: path.join(__dirname, '..src', 'components'),
-  output: path.join(__dirname, '..config', 'componentData.js')
+  components: path.join(__dirname, '../src', 'components'),
+  output: path.join(__dirname, '../config', 'componentData.js')
 };
 
 const enableWatchMode = process.argv.slice(2) == '--watch';
+
 if (enableWatchMode) {
   // Regenerate component metadata when components or examples change
   chokidar
     .watch([paths.examples, paths.components])
-    .options('change', (event, path) => {
+    .on('change', (event, path) => {
       generate(paths);
     });
 } else {
@@ -23,25 +24,27 @@ if (enableWatchMode) {
   generate(paths);
 }
 
-const generate = paths => {
+function generate(paths) {
   let errors = [];
-  const componentData = getDirectories(path.components).map(componentName => {
+  const componentData = getDirectories(paths.components).map(componentName => {
     try {
       return getComponentData(paths, componentName);
     } catch (err) {
       errors.push(
-        `Error occured when attempting to generate metadata for ${componentName}. ${error} `
+        `Error occured when attempting to generate metadata for ${componentName}. ${err} `
       );
     }
   });
   writeFile(
     paths.output,
-    `modue.exports = ${JSON.stringify(errors.length ? errors : componentData)}`
+    `module.exports = ${JSON.stringify(errors.length ? errors : componentData)}`
   );
-};
+}
 
-const getComponentData = (paths, componentName) => {
-  const content = readFile(path.join(paths.components, componentName + '.js'));
+function getComponentData(paths, componentName) {
+  const content = readFile(
+    path.join(paths.components, componentName, componentName + '.js')
+  );
   const info = parse(content);
 
   return {
@@ -51,9 +54,9 @@ const getComponentData = (paths, componentName) => {
     code: content,
     examples: getExampleData(paths.examples, componentName)
   };
-};
+}
 
-const getExampleData = (examplesPath, componentName) => {
+function getExampleData(examplesPath, componentName) {
   const examples = getExampleFiles(examplesPath, componentName);
   return examples.map(file => {
     const filePath = path.join(examplesPath, componentName, file);
@@ -67,9 +70,9 @@ const getExampleData = (examplesPath, componentName) => {
       code: content
     };
   });
-};
+}
 
-const getExampleFiles = (examplesPath, componentName) => {
+function getExampleFiles(examplesPath, componentName) {
   let exampleFiles = [];
   try {
     exampleFiles = getFiles(path.join(examplesPath, componentName));
@@ -77,28 +80,28 @@ const getExampleFiles = (examplesPath, componentName) => {
     console.log(chalk.red(`No examples found for ${componentName}.`));
   }
   return exampleFiles;
-};
+}
 
-const getDirectories = filePath => {
+function getDirectories(filePath) {
   return fs.readdirSync(filePath).filter(file => {
     return fs.statSync(path.join(filePath, file)).isDirectory();
   });
-};
+}
 
-const getFiles = filePath => {
+function getFiles(filePath) {
   return fs.readdirSync(filepath).filter(file => {
     return fs.statSync(path.join(filePath, file)).isFile();
   });
-};
+}
 
-const writeFile = filePath => {
+function writeFile(filePath, content) {
   fs.writeFile(filePath, content, err => {
     err
       ? console.log(chalk.red(err))
       : console.log(chalk.green('Component data saved.'));
   });
-};
+}
 
-const readFile = filePath => {
+function readFile(filePath) {
   return fs.readFileSync(filePath, 'utf-8');
-};
+}
