@@ -1,10 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const chalk = require('chalk');
-const parse = require('react-docgen').parse;
-const chokidar = require('chokidar');
+var fs = require('fs');
+var path = require('path');
+var chalk = require('chalk');
+var parse = require('react-docgen').parse;
+var chokidar = require('chokidar');
 
-const paths = {
+var paths = {
   examples: path.join(__dirname, '../src', 'docs', 'examples'),
   components: path.join(__dirname, '../src', 'components'),
   output: path.join(__dirname, '../config', 'componentData.js')
@@ -13,7 +13,7 @@ const paths = {
 const enableWatchMode = process.argv.slice(2) == '--watch';
 
 if (enableWatchMode) {
-  // Regenerate component metadata when components or examples change
+  // Regenerate component metadata when components or examples change.
   chokidar
     .watch([paths.examples, paths.components])
     .on('change', (event, path) => {
@@ -29,15 +29,18 @@ function generate(paths) {
   const componentData = getDirectories(paths.components).map(componentName => {
     try {
       return getComponentData(paths, componentName);
-    } catch (err) {
+    } catch (error) {
       errors.push(
-        `Error occured when attempting to generate metadata for ${componentName}. ${err} `
+        'An error occurred while attempting to generate metadata for ' +
+          componentName +
+          '. ' +
+          error
       );
     }
   });
   writeFile(
     paths.output,
-    `module.exports = ${JSON.stringify(errors.length ? errors : componentData)}`
+    'module.exports = ' + JSON.stringify(errors.length ? errors : componentData)
   );
 }
 
@@ -46,7 +49,6 @@ function getComponentData(paths, componentName) {
     path.join(paths.components, componentName, componentName + '.js')
   );
   const info = parse(content);
-
   return {
     name: componentName,
     description: info.description,
@@ -62,9 +64,9 @@ function getExampleData(examplesPath, componentName) {
     const filePath = path.join(examplesPath, componentName, file);
     const content = readFile(filePath);
     const info = parse(content);
-
     return {
-      // component name should match file name so remove .js extension
+      // By convention, component name should match the filename.
+      // So remove the .js extension to get the component name.
       name: file.slice(0, -3),
       description: info.description,
       code: content
@@ -76,26 +78,26 @@ function getExampleFiles(examplesPath, componentName) {
   let exampleFiles = [];
   try {
     exampleFiles = getFiles(path.join(examplesPath, componentName));
-  } catch (err) {
+  } catch (error) {
     console.log(chalk.red(`No examples found for ${componentName}.`));
   }
   return exampleFiles;
 }
 
-function getDirectories(filePath) {
-  return fs.readdirSync(filePath).filter(file => {
-    return fs.statSync(path.join(filePath, file)).isDirectory();
-  });
-}
-
-function getFiles(filePath) {
+function getDirectories(filepath) {
   return fs.readdirSync(filepath).filter(file => {
-    return fs.statSync(path.join(filePath, file)).isFile();
+    return fs.statSync(path.join(filepath, file)).isDirectory();
   });
 }
 
-function writeFile(filePath, content) {
-  fs.writeFile(filePath, content, err => {
+function getFiles(filepath) {
+  return fs.readdirSync(filepath).filter(file => {
+    return fs.statSync(path.join(filepath, file)).isFile();
+  });
+}
+
+function writeFile(filepath, content) {
+  fs.writeFile(filepath, content, err => {
     err
       ? console.log(chalk.red(err))
       : console.log(chalk.green('Component data saved.'));
